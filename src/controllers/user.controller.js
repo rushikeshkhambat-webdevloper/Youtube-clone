@@ -4,7 +4,7 @@ import { ApiError } from "../utils/Api.Error.js";
 import { User } from "../models/user.models.js";
 import { uploadOnCloudinary } from "../utils/cloudnary.js";
 import { ApiResponse } from "../utils/Apiresponse.js";
-import jwt from"jesonwebtoken"
+import jwt from"jsonwebtoken"
 
 
 
@@ -208,50 +208,54 @@ const logoutUser=asyncHandler(async(req,res)=>{
       .json(new ApiResponse(200,{},"User logged Out"))
 })
 
-const refreshAccessToken= asyncHandler(async (req,res)=>{
+const refreshAccessToken = asyncHandler(async (req, res) => {
     const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
-    if(!incomingRefreshToken){
-        throw new ApiError(401,"unauthorized request")
+
+    if (!incomingRefreshToken) {
+        throw new ApiError(401, "unauthorized request")
     }
+
     try {
-        const decodedToken = jwt.verify(// here decodetoken means it is in perfect object key valude strucutre so we can used it properly 
+        const decodedToken = jwt.verify(
             incomingRefreshToken,
             process.env.REFRESH_TOKEN_SECRET
         )
-       const user= User.findById(decodedToken?._id)
-       if(!user){
-        throw new ApiError(401,"Invalid refresh token ")
-       }
-       if(incomingRefreshToken !== user?.refreshToken){
-        throw new ApiError(401,"Refresh token is expired or used")
-       }
     
-       const options={
-        httponly:true,
-        secure:true
-       }
+        const user = await User.findById(decodedToken?._id)
     
-      const {accessToken,refreshToken}=await generateAccessAndRefereshTokens(user._id)
+        if (!user) {
+            throw new ApiError(401, "Invalid refresh token")
+        }
     
-      return res
-      .status(200)
-      .cookie("accessToken",accessToken)
-      .cookie("refreshToken",refreshToken)
-      .json(
-        new ApiResponse(
-            200,
-            {
-                accessToken, refreshToken : newRefreshToken
-            },
-            "Access token refresh Successfully"
+        if (incomingRefreshToken !== user?.refreshToken) {
+            throw new ApiError(401, "Refresh token is expired or used")
+            
+        }
+    
+        const options = {
+            httpOnly: true,
+            secure: true
+        }
+    
+        const {accessToken, newRefreshToken} = await generateAccessAndRefereshTokens(user._id)
+    
+        return res
+        .status(200)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", newRefreshToken, options)
+        .json(
+            new ApiResponse(
+                200, 
+                {accessToken, refreshToken: newRefreshToken},
+                "Access token refreshed"
+            )
         )
-      )
-    
-    
-    }catch (error) {
-        throw new ApiError(401,error?.message ||"Invalid refresh token" )
+    } catch (error) {
+        throw new ApiError(401, error?.message || "Invalid refresh token")
     }
+
 })
+
 // hence we are writting controller for user we have to write some basic controllers tooo 
 const changeCurrentPassword= asyncHandler(async(req,res)=>{
     const{oldPassword,newPassword}=req.body
@@ -301,7 +305,7 @@ const updateAccountDetails= asyncHandler(async(req,res)=>{
     ).select("-password")// we dont want password 
 
     return res
-    .status()
+    .status(200)
     .json(new ApiResponse(200,user,"Account details updated successfully"))
 })
 
@@ -453,7 +457,7 @@ const getUserChannelProfile= asyncHandler(async(req,res)=>{
 
 })
 
-const getWatchHitory=asyncHandler(async(req,res)=>{
+const getWatchHistory=asyncHandler(async(req,res)=>{
       const user= await User.aggregrat([  
 
          {
@@ -521,6 +525,6 @@ export { registerUser ,
     updateUserAvatar,
     updateUserCoverImage,
     getUserChannelProfile,
-    getWatchHitory
+    getWatchHistory
 
 };
